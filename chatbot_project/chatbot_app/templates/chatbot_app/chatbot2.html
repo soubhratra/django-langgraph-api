@@ -1,0 +1,157 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Teen Chatbot Client</title>
+    <style>
+        body {
+            background-color: #ffefd5;
+            font-family: 'Comic Sans MS', cursive, sans-serif;
+            color: #333;
+            margin: 0;
+            padding: 0;
+        }
+        #chat-container {
+            display: flex;
+            flex-direction: column;
+            height: 100vh;
+        }
+        #messages {
+            flex: 1;
+            padding: 20px;
+            overflow-y: auto;
+            background-color: #fff;
+            display: flex;
+            flex-direction: column;
+        }
+        .message-wrapper {
+            display: flex;
+            margin-bottom: 10px;
+        }
+        .message {
+            max-width: 70%;
+            padding: 10px;
+            border-radius: 15px;
+            word-wrap: break-word;
+        }
+        .user-message {
+            background-color: #a0e7e5;
+            align-self: flex-end;
+            text-align: right;
+        }
+        .bot-message {
+            background-color: #b4f8c8;
+            align-self: flex-start;
+            text-align: left;
+        }
+        #input-container {
+            display: flex;
+            padding: 10px;
+            background-color: #fce1e4;
+        }
+        #message-input {
+            flex: 1;
+            padding: 12px;
+            font-size: 16px;
+            border: 2px solid #ff75a0;
+            border-radius: 25px;
+            outline: none;
+        }
+        #send-button {
+            margin-left: 10px;
+            padding: 12px 20px;
+            font-size: 16px;
+            background-color: #ff75a0;
+            color: #fff;
+            border: none;
+            border-radius: 25px;
+            cursor: pointer;
+        }
+        #send-button:hover {
+            background-color: #ff5677;
+        }
+        ::placeholder {
+            color: #999;
+        }
+    </style>
+</head>
+<body>
+    <div id="chat-container">
+        <div id="messages"></div>
+        <div id="input-container">
+            <input type="text" id="message-input" placeholder="Type your message here" autofocus autocomplete="off">
+            <button id="send-button">Send</button>
+        </div>
+    </div>
+
+    <script>
+        const messagesContainer = document.getElementById('messages');
+        const messageInput = document.getElementById('message-input');
+        const sendButton = document.getElementById('send-button');
+
+        function addMessage(content, sender) {
+            const messageWrapper = document.createElement('div');
+            messageWrapper.classList.add('message-wrapper');
+
+            const messageElement = document.createElement('div');
+            messageElement.classList.add('message', `${sender}-message`);
+            messageElement.textContent = content;
+
+            if (sender === 'user') {
+                messageWrapper.style.justifyContent = 'flex-end';
+            } else {
+                messageWrapper.style.justifyContent = 'flex-start';
+            }
+
+            messageWrapper.appendChild(messageElement);
+            messagesContainer.appendChild(messageWrapper);
+            messagesContainer.scrollTop = messagesContainer.scrollHeight;
+        }
+
+        function sendMessage() {
+            const message = messageInput.value.trim();
+            if (message === '') return;
+
+            // Display user's message
+            addMessage(message, 'user');
+
+            messageInput.value = '';
+            messageInput.focus();
+
+            // Send message to the server
+            const evtSource = new EventSource('/api/chat?message=' + encodeURIComponent(message));
+            let botMessage = '';
+            const botMessageWrapper = document.createElement('div');
+            botMessageWrapper.classList.add('message-wrapper');
+            botMessageWrapper.style.justifyContent = 'flex-start';
+
+            const botMessageElement = document.createElement('div');
+            botMessageElement.classList.add('message', 'bot-message');
+
+            botMessageWrapper.appendChild(botMessageElement);
+            messagesContainer.appendChild(botMessageWrapper);
+            messagesContainer.scrollTop = messagesContainer.scrollHeight;
+
+            evtSource.onmessage = function(e) {
+                botMessage += e.data;
+                botMessageElement.textContent = botMessage;
+                messagesContainer.scrollTop = messagesContainer.scrollHeight;
+            };
+
+            evtSource.onerror = function() {
+                evtSource.close();
+            };
+        }
+
+        // Send message when the send button is clicked
+        sendButton.addEventListener('click', sendMessage);
+
+        // Send message when the Enter key is pressed
+        messageInput.addEventListener('keydown', function(e) {
+            if (e.key === 'Enter') {
+                sendMessage();
+                e.preventDefault(); // Prevent newline in the input
+            }
+        });
+    </script>
+</body>
+</html>
